@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-ivory text-ink;
+  }
+  ::selection {
+    @apply bg-gold/30;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-[11px] uppercase tracking-luxe text-stone-450;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-ink px-8 py-4 text-[11px] font-medium uppercase tracking-[0.22em] text-ivory transition-colors hover:bg-gold-dark disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 border border-ink px-8 py-4 text-[11px] font-medium uppercase tracking-[0.22em] text-ink transition-colors hover:bg-ink hover:text-ivory;
+  }
+  .field {
+    @apply w-full border border-ink/15 bg-white/60 px-4 py-3 text-sm outline-none transition placeholder:text-stone-450 focus:border-ink;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}
