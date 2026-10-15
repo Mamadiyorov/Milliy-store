@@ -2,13 +2,15 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
-  products as seedProducts, recentOrders as seedOrders,
+  colorLabel, localizeProduct, products as seedProducts, recentOrders as seedOrders,
   type Currency, type Order, type OrderStatus, type Product, type Size,
 } from "@/lib/mockData";
 import {
   fallbackRate, fetchUsdRate, formatUSD, formatUZS, isFresh, readCachedRate, uzsToUSD, type UsdRate,
 } from "@/lib/currency";
-import { LANGUAGE_KEY, isLanguage, languageMeta, translate, type Language, type TranslationKey } from "@/lib/i18n";
+import {
+  LANGUAGE_KEY, isLanguage, languageCurrency, languageMeta, translate, type Language, type TranslationKey,
+} from "@/lib/i18n";
 
 export interface CartItem {
   key: string;
@@ -31,8 +33,8 @@ export interface CustomerProfile {
 }
 
 interface StoreState {
+  /** Tilga bog'langan: UZ/RU → UZS, EN/KO/AR → USD. Alohida o'zgartirgich yo'q. */
   currency: Currency;
-  setCurrency: (c: Currency) => void;
   /** 1 USD = usdRate.rate UZS (API'dan, keshdan yoki zaxira 12 800) */
   usdRate: UsdRate;
   /** Narxni tanlangan valyutada formatlaydi. USD — har bir dona narxi yaxlitlanib, keyin qty ga ko'paytiriladi. */
@@ -41,7 +43,11 @@ interface StoreState {
   toUSD: (unitUZS: number) => number;
   language: Language;
   setLanguage: (l: Language) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+  /** Mahsulot matnlarini (nom, tavsif, ...) tanlangan tilga o'giradi */
+  localize: (p: Product) => Product;
+  /** Rang nomini tanlangan tilda qaytaradi (saqlanadigan kalit — o'zbekcha nom) */
+  colorName: (name: string) => string;
   cart: CartItem[];
   cartCount: number;
   subtotalUZS: number;
@@ -106,7 +112,6 @@ function readData(): { orders?: Order[]; products?: Product[] } {
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [currency, setCurrency] = useState<Currency>("UZS");
   const [usdRate, setUsdRate] = useState<UsdRate>(fallbackRate);
   const [language, setLanguageState] = useState<Language>("uz");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -125,9 +130,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as { cart?: CartItem[]; currency?: Currency };
+        const saved = JSON.parse(raw) as { cart?: CartItem[] };
         if (saved.cart) setCart(saved.cart.filter((i) => getProduct(i.productId)));
-        if (saved.currency) setCurrency(saved.currency);
       }
     } catch {}
     try {
@@ -171,9 +175,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ cart, currency }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ cart }));
     } catch {}
-  }, [cart, currency, hydrated]);
+  }, [cart, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -221,8 +225,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (existing) return prev.map((i) => (i.key === key ? { ...i, qty: i.qty + qty } : i));
       return [...prev, { key, productId: product.id, size, color, qty }];
     });
-    setToast(`${product.name} savatchaga qo'shildi`);
-  }, []);
+    setToast(translate(language, "toast.added", { name: localizeProduct(product, language).name }));
+  }, [language]);
 
   const updateQty = useCallback((key: string, qty: number) => {
     setCart((prev) => (qty <= 0 ? prev.filter((i) => i.key !== key) : prev.map((i) => (i.key === key ? { ...i, qty } : i))));
@@ -263,7 +267,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = meta.dir;
   }, [language]);
 
-  const t = useCallback((key: TranslationKey) => translate(language, key), [language]);
+  const t = useCallback((key: TranslationKey, vars?: Record<string, string | number>) => translate(language, key, vars), [language]);
+  const localize = useCallback((p: Product) => localizeProduct(p, language), [language]);
+  const colorName = useCallback((name: string) => colorLabel(name, language), [language]);
+  const currency = languageCurrency(language);
 
   const toUSD = useCallback((unitUZS: number) => uzsToUSD(unitUZS, usdRate.rate), [usdRate.rate]);
 
@@ -285,7 +292,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       cartCount += item.qty;
     }
     return {
-      currency, setCurrency, usdRate, money, toUSD, language, setLanguage, t,
+      currency, usdRate, money, toUSD, language, setLanguage, t, localize, colorName,
       cart, cartCount, subtotalUZS, subtotalUSD,
       addToCart, updateQty, removeItem, clearCart,
       cartOpen, setCartOpen, checkoutOpen, setCheckoutOpen, quickView, setQuickView, requestSelection, quickViewNeedsSelection, toast,
@@ -293,7 +300,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       products, addProduct, orders, addOrder, setOrderStatus,
     };
   }, [
-    currency, usdRate, money, toUSD, language, setLanguage, t, cart, addToCart, updateQty, removeItem, clearCart, cartOpen, checkoutOpen, quickView, setQuickView, requestSelection,
+    currency, usdRate, money, toUSD, language, setLanguage, t, localize, colorName, cart, addToCart, updateQty, removeItem, clearCart, cartOpen, checkoutOpen, quickView, setQuickView, requestSelection,
     quickViewNeedsSelection, toast, profile, saveProfile, clearProfile, profileOpen, products, addProduct, orders, addOrder, setOrderStatus,
   ]);
 

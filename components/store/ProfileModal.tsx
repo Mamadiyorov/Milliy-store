@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, UserRound, X } from "lucide-react";
-import { countries } from "@/lib/mockData";
+import { countries, countryLabel } from "@/lib/mockData";
 import { cn } from "@/lib/format";
 import { useStore, type CustomerProfile } from "./StoreProvider";
 
@@ -10,7 +10,7 @@ const empty: CustomerProfile = { firstName: "", lastName: "", phone: "+998 ", em
 
 /** "Mening profilim" — checkout'da saqlangan mijoz ma'lumotlarini ko'rish va tahrirlash. */
 export function ProfileModal() {
-  const { profileOpen, setProfileOpen, profile, saveProfile, clearProfile } = useStore();
+  const { profileOpen, setProfileOpen, profile, saveProfile, clearProfile, language, t } = useStore();
   const [form, setForm] = useState<CustomerProfile>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof CustomerProfile, boolean>>>({});
   const [saved, setSaved] = useState(false);
@@ -60,7 +60,7 @@ export function ProfileModal() {
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm animate-fadeIn" onClick={() => setProfileOpen(false)} />
       <form onSubmit={submit} className="relative max-h-[92vh] w-full max-w-lg animate-fadeUp overflow-y-auto bg-ivory p-6 md:p-10">
-        <button type="button" onClick={() => setProfileOpen(false)} className="absolute right-5 top-5" aria-label="Yopish">
+        <button type="button" onClick={() => setProfileOpen(false)} className="absolute end-5 top-5" aria-label={t("a.close")}>
           <X size={20} strokeWidth={1.5} />
         </button>
 
@@ -69,49 +69,52 @@ export function ProfileModal() {
             <UserRound size={18} strokeWidth={1.5} />
           </span>
           <div>
-            <p className="eyebrow">Mening profilim</p>
-            <h2 className="font-serif text-3xl font-light">{profile ? `${profile.firstName} ${profile.lastName}` : "Saqlangan profil"}</h2>
+            <p className="eyebrow">{t("profile.my")}</p>
+            <h2 className="font-serif text-3xl font-light">{profile ? `${profile.firstName} ${profile.lastName}` : t("profile.saved")}</h2>
           </div>
         </div>
-        <p className="mt-4 text-xs leading-relaxed text-stone-450">
-          {profile
-            ? "Bu ma'lumotlar keyingi xaridlarda checkout formasini avtomatik to'ldiradi. Ular faqat shu brauzerda saqlanadi."
-            : "Hozircha profil saqlanmagan. Birinchi xaridingizda kiritgan ma'lumotlaringiz shu yerda saqlanadi — yoki hozir to'ldiring."}
-        </p>
+        <p className="mt-4 text-xs leading-relaxed text-stone-450">{profile ? t("profile.prefillInfo") : t("profile.emptyInfo")}</p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <Field label="Ism" value={form.firstName} error={errors.firstName} onChange={(v) => update("firstName", v)} />
-          <Field label="Familiya" value={form.lastName} error={errors.lastName} onChange={(v) => update("lastName", v)} />
-          <Field label="Telefon" value={form.phone} error={errors.phone} onChange={(v) => update("phone", v)} />
-          <Field label="Email (ixtiyoriy)" value={form.email} onChange={(v) => update("email", v)} type="email" />
+          <Field label={t("field.firstName")} value={form.firstName} error={errors.firstName} errorText={t("field.required")} onChange={(v) => update("firstName", v)} />
+          <Field label={t("field.lastName")} value={form.lastName} error={errors.lastName} errorText={t("field.required")} onChange={(v) => update("lastName", v)} />
+          <Field label={t("field.phone")} value={form.phone} error={errors.phone} errorText={t("field.required")} onChange={(v) => update("phone", v)} ltr />
+          <Field label={t("field.email")} value={form.email} onChange={(v) => update("email", v)} type="email" ltr />
           <label className="block">
-            <span className="mb-1.5 block text-[11px] uppercase tracking-[0.15em] text-ink/70">Mamlakat</span>
+            <span className="mb-1.5 block text-[11px] uppercase tracking-[0.15em] text-ink/70">{t("field.country")}</span>
             <select value={form.country} onChange={(e) => update("country", e.target.value)} className="field appearance-none">
               {countries.map((c) => (
                 <option key={c.code} value={c.code}>
-                  {c.name}
+                  {countryLabel(c.code, language)}
                 </option>
               ))}
             </select>
           </label>
-          <Field label="Shahar / Viloyat" value={form.city} error={errors.city} onChange={(v) => update("city", v)} />
+          <Field label={t("field.region")} value={form.city} error={errors.city} errorText={t("field.required")} onChange={(v) => update("city", v)} />
           <div className="sm:col-span-2">
-            <Field label="Manzil" value={form.address} error={errors.address} onChange={(v) => update("address", v)} placeholder="Ko'cha, uy, xonadon" />
+            <Field
+              label={t("field.address")}
+              value={form.address}
+              error={errors.address}
+              errorText={t("field.required")}
+              onChange={(v) => update("address", v)}
+              placeholder={t("field.addressPlaceholder")}
+            />
           </div>
         </div>
 
         <button type="submit" className="btn-primary mt-8 w-full">
           {saved ? (
             <span className="flex items-center justify-center gap-2">
-              <Check size={14} /> Saqlandi
+              <Check size={14} /> {t("profile.savedOk")}
             </span>
           ) : (
-            "Saqlash"
+            t("profile.save")
           )}
         </button>
         {profile && (
           <button type="button" onClick={remove} className="mt-3 w-full text-[11px] uppercase tracking-[0.2em] text-stone-450 underline underline-offset-4 hover:text-[#8E2A2A]">
-            Profilni o'chirish
+            {t("profile.delete")}
           </button>
         )}
       </form>
@@ -120,13 +123,20 @@ export function ProfileModal() {
 }
 
 function Field({
-  label, value, onChange, error, placeholder, type = "text",
-}: { label: string; value: string; onChange: (v: string) => void; error?: boolean; placeholder?: string; type?: string }) {
+  label, value, onChange, error, errorText, placeholder, type = "text", ltr = false,
+}: { label: string; value: string; onChange: (v: string) => void; error?: boolean; errorText?: string; placeholder?: string; type?: string; ltr?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-[11px] uppercase tracking-[0.15em] text-ink/70">{label}</span>
-      <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={cn("field", error && "border-[#8E2A2A] bg-[#8E2A2A]/5")} />
-      {error && <span className="mt-1 block text-[11px] text-[#8E2A2A]">Ushbu maydonni to'ldiring</span>}
+      <input
+        type={type}
+        value={value}
+        dir={ltr ? "ltr" : undefined}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn("field", ltr && "text-start", error && "border-[#8E2A2A] bg-[#8E2A2A]/5")}
+      />
+      {error && <span className="mt-1 block text-[11px] text-[#8E2A2A]">{errorText}</span>}
     </label>
   );
 }

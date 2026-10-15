@@ -1,6 +1,6 @@
 "use client";
 
-import { LANGUAGES } from "@/lib/i18n";
+import { LANGUAGES, languageCurrency } from "@/lib/i18n";
 import { cn } from "@/lib/format";
 import { useStore } from "./StoreProvider";
 
@@ -16,7 +16,7 @@ export function LanguageSwitch({ tone = "dark", className }: { tone?: "dark" | "
           <button
             onClick={() => setLanguage(l.code)}
             lang={l.htmlLang}
-            title={l.name}
+            title={`${l.name} · ${languageCurrency(l.code)}`}
             aria-pressed={language === l.code}
             className={cn(
               "px-0.5 transition",

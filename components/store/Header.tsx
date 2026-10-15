@@ -9,9 +9,7 @@ import { LanguageSwitch } from "./LanguageSwitch";
 import { ProfileModal } from "./ProfileModal";
 import { cn } from "@/lib/format";
 import { BRAND } from "@/lib/brand";
-import { formatUZS } from "@/lib/currency";
 import type { TranslationKey } from "@/lib/i18n";
-import type { Currency } from "@/lib/mockData";
 
 const nav: { key: TranslationKey; href: string }[] = [
   { key: "nav.new", href: "/#kolleksiya" },
@@ -24,7 +22,7 @@ const nav: { key: TranslationKey; href: string }[] = [
 const announcements: TranslationKey[] = ["ann.delivery", "ann.dhl", "ann.payment", "ann.handmade"];
 
 export function Header() {
-  const { currency, setCurrency, usdRate, cartCount, setCartOpen, profile, setProfileOpen, t } = useStore();
+  const { cartCount, setCartOpen, profile, setProfileOpen, t } = useStore();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -96,12 +94,7 @@ export function Header() {
           </Link>
 
           <div className="flex items-center justify-end gap-3 md:gap-5">
-            <CurrencySwitch
-              currency={currency}
-              onChange={setCurrency}
-              label={t("a.currency")}
-              hint={`1 USD = ${formatUZS(usdRate.rate, "UZS")}${usdRate.live ? "" : ` (${t("rate.fallback")})`}`}
-            />
+            {/* Valyuta alohida tanlanmaydi — tilga bog'langan (UZ/RU → so'm, EN/KO/AR → USD) */}
             <button className="hidden md:block" aria-label={t("a.search")}>
               <Search size={18} strokeWidth={1.5} />
             </button>
@@ -174,25 +167,5 @@ export function Header() {
 
       <ProfileModal />
     </>
-  );
-}
-
-function CurrencySwitch({ currency, onChange, label, hint }: { currency: Currency; onChange: (c: Currency) => void; label: string; hint: string }) {
-  return (
-    <div dir="ltr" role="group" aria-label={label} title={hint} className="flex items-center rounded-full border border-ink/15 p-0.5 text-[10px] font-medium tracking-widest">
-      {(["UZS", "USD"] as Currency[]).map((c) => (
-        <button
-          key={c}
-          onClick={() => onChange(c)}
-          aria-pressed={currency === c}
-          className={cn(
-            "rounded-full px-2.5 py-1 transition",
-            currency === c ? "bg-ink text-ivory" : "text-ink/60 hover:text-ink",
-          )}
-        >
-          {c}
-        </button>
-      ))}
-    </div>
   );
 }

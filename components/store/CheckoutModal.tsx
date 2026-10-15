@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, CreditCard, Globe, Loader2, Lock, MapPin, Truck, X } from "lucide-react";
-import { countries, paymentMethods, shippingOptions, type OrderLine, type PaymentMethod, type ShippingOption } from "@/lib/mockData";
+import {
+  countries, countryLabel, localizeShipping, paymentMethods, paymentNote, shippingOptions,
+  type OrderLine, type PaymentMethod, type ShippingOption,
+} from "@/lib/mockData";
 import { cn, formatUSD, formatUZS } from "@/lib/format";
 import { getProduct, useStore, type CustomerProfile, type NewOrder } from "./StoreProvider";
 import { SmartImage } from "./SmartImage";
@@ -26,6 +29,7 @@ const initialForm: FormState = { firstName: "", lastName: "", phone: "+998 ", em
 export function CheckoutModal() {
   const {
     checkoutOpen, setCheckoutOpen, cart, currency, money, toUSD, usdRate, subtotalUZS, subtotalUSD, clearCart, addOrder, profile, saveProfile,
+    language, localize, colorName, t,
   } = useStore();
   const [form, setForm] = useState<FormState>(initialForm);
   const [shipping, setShipping] = useState<ShippingOption["id"]>("tashkent");
@@ -69,11 +73,8 @@ export function CheckoutModal() {
   const totalUSD = subtotalUSD + shipUSD; // yaxlitlangan qatorlar yig'indisi — ekrandagi raqamlar bilan mos
   const fmt = (uzs: number, usd: number) => (currency === "UZS" ? money(uzs) : formatUSD(usd));
 
-  const payLabel = useMemo(() => {
-    if (payment === "payme") return "Payme orqali to'lash";
-    if (payment === "click") return "Click orqali to'lash";
-    return "Visa / Mastercard bilan to'lash";
-  }, [payment]);
+  const payLabel = t("checkout.payWith", { name: paymentMethods.find((m) => m.id === payment)!.name });
+  const shippingShown = localizeShipping(selectedShipping, language); // ekran uchun; buyurtmaga o'zbekcha nom yoziladi
 
   if (!checkoutOpen) return null;
 
@@ -150,63 +151,71 @@ export function CheckoutModal() {
 
       <div className="relative w-full max-w-6xl animate-fadeUp bg-ivory md:max-h-[94vh] md:overflow-y-auto">
         {stage !== "processing" && (
-          <button onClick={close} className="absolute right-5 top-5 z-10" aria-label="Yopish">
+          <button onClick={close} className="absolute end-5 top-5 z-10" aria-label={t("a.close")}>
             <X size={20} strokeWidth={1.5} />
           </button>
         )}
 
         {stage === "processing" && <ProcessingScreen payment={payment} total={paidTotal} />}
-        {stage === "success" && <SuccessScreen orderId={orderId} name={form.firstName} total={paidTotal} eta={selectedShipping.eta} onClose={close} />}
+        {stage === "success" && <SuccessScreen orderId={orderId} name={form.firstName} total={paidTotal} eta={shippingShown.eta} onClose={close} />}
 
         {stage === "form" && (
           <form onSubmit={submit} className="grid md:grid-cols-[1.25fr_1fr]">
             <div className="p-6 md:p-10">
-              <p className="eyebrow">Xavfsiz checkout</p>
-              <h2 className="mt-2 font-serif text-4xl font-light">Buyurtmani rasmiylashtirish</h2>
+              <p className="eyebrow">{t("checkout.eyebrow")}</p>
+              <h2 className="mt-2 font-serif text-4xl font-light">{t("checkout.title")}</h2>
               {profile ? (
-                <p className="mt-3 text-xs text-gold-dark">✓ Ma'lumotlar saqlangan profilingizdan avtomatik to'ldirildi. Kerak bo'lsa, o'zgartiring.</p>
+                <p className="mt-3 text-xs text-gold-dark">{t("checkout.prefilled")}</p>
               ) : (
-                <p className="mt-3 text-xs text-stone-450">Ma'lumotlaringiz keyingi xaridlar uchun shu brauzerda saqlanadi.</p>
+                <p className="mt-3 text-xs text-stone-450">{t("checkout.willSave")}</p>
               )}
 
-              <Section icon={<MapPin size={15} />} title="Mijoz ma'lumotlari">
+              <Section icon={<MapPin size={15} />} title={t("checkout.customer")}>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Input label="Ism" value={form.firstName} error={errors.firstName} onChange={(v) => update("firstName", v)} placeholder="Madina" />
-                  <Input label="Familiya" value={form.lastName} error={errors.lastName} onChange={(v) => update("lastName", v)} placeholder="Karimova" />
-                  <Input label="Telefon" value={form.phone} error={errors.phone} onChange={(v) => update("phone", v)} placeholder="+998 90 123 45 67" />
-                  <Input label="Email (ixtiyoriy)" value={form.email} onChange={(v) => update("email", v)} placeholder="siz@mail.uz" type="email" />
+                  <Input label={t("field.firstName")} value={form.firstName} error={errors.firstName} errorText={t("field.required")} onChange={(v) => update("firstName", v)} />
+                  <Input label={t("field.lastName")} value={form.lastName} error={errors.lastName} errorText={t("field.required")} onChange={(v) => update("lastName", v)} />
+                  <Input label={t("field.phone")} value={form.phone} error={errors.phone} errorText={t("field.required")} onChange={(v) => update("phone", v)} placeholder="+998 90 123 45 67" ltr />
+                  <Input label={t("field.email")} value={form.email} onChange={(v) => update("email", v)} placeholder="you@mail.com" type="email" ltr />
                 </div>
               </Section>
 
-              <Section icon={<Globe size={15} />} title="Yetkazib berish manzili">
+              <Section icon={<Globe size={15} />} title={t("checkout.address")}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="block">
-                    <span className="mb-1.5 block text-[11px] uppercase tracking-[0.15em] text-ink/70">Mamlakat</span>
+                    <span className="mb-1.5 block text-[11px] uppercase tracking-[0.15em] text-ink/70">{t("field.country")}</span>
                     <select value={form.country} onChange={(e) => update("country", e.target.value)} className="field appearance-none">
                       {countries.map((c) => (
                         <option key={c.code} value={c.code}>
-                          {c.name}
+                          {countryLabel(c.code, language)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <Input
-                    label={isDomestic ? "Shahar / Viloyat" : "Shahar"}
+                    label={isDomestic ? t("field.region") : t("field.city")}
                     value={form.city}
                     error={errors.city}
+                    errorText={t("field.required")}
                     onChange={(v) => update("city", v)}
-                    placeholder={isDomestic ? "Toshkent" : "Berlin"}
                   />
                   <div className="sm:col-span-2">
-                    <Input label="Manzil" value={form.address} error={errors.address} onChange={(v) => update("address", v)} placeholder="Ko'cha, uy, xonadon" />
+                    <Input
+                      label={t("field.address")}
+                      value={form.address}
+                      error={errors.address}
+                      errorText={t("field.required")}
+                      onChange={(v) => update("address", v)}
+                      placeholder={t("field.addressPlaceholder")}
+                    />
                   </div>
                 </div>
               </Section>
 
-              <Section icon={<Truck size={15} />} title="Dostavka usuli">
+              <Section icon={<Truck size={15} />} title={t("checkout.shipping")}>
                 <div className="space-y-2">
-                  {shippingOptions.map((s) => {
-                    const disabled = !available.includes(s);
+                  {shippingOptions.map((option) => {
+                    const s = localizeShipping(option, language);
+                    const disabled = !available.includes(option);
                     const isFree = s.id === "tashkent" && subtotalUZS >= FREE_SHIPPING_UZS;
                     return (
                       <label
@@ -226,16 +235,16 @@ export function CheckoutModal() {
                           </p>
                         </div>
                         <span className="text-sm">
-                          {isFree ? <span className="text-gold-dark">Bepul</span> : money(s.priceUZS)}
+                          {isFree ? <span className="text-gold-dark">{t("free")}</span> : money(s.priceUZS)}
                         </span>
                       </label>
                     );
                   })}
-                  {!isDomestic && <p className="text-xs text-stone-450">Xalqaro buyurtmalar faqat DHL Global Express orqali yuboriladi.</p>}
+                  {!isDomestic && <p className="text-xs text-stone-450">{t("checkout.intlOnly")}</p>}
                 </div>
               </Section>
 
-              <Section icon={<CreditCard size={15} />} title="To'lov turi">
+              <Section icon={<CreditCard size={15} />} title={t("checkout.payment")}>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {paymentMethods.map((m) => (
                     <button
@@ -243,7 +252,7 @@ export function CheckoutModal() {
                       key={m.id}
                       onClick={() => setPayment(m.id)}
                       className={cn(
-                        "flex flex-col items-start gap-2 border px-4 py-4 text-left transition",
+                        "flex flex-col items-start gap-2 border px-4 py-4 text-start transition",
                         payment === m.id ? "border-ink bg-white" : "border-ink/15 hover:border-ink/40",
                       )}
                     >
@@ -251,32 +260,33 @@ export function CheckoutModal() {
                         <PaymentLogo id={m.id} />
                         <Radio checked={payment === m.id} />
                       </div>
-                      <span className="text-[11px] text-stone-450">{m.note}</span>
+                      <span className="text-[11px] text-stone-450">{paymentNote(m.id, language)}</span>
                     </button>
                   ))}
                 </div>
               </Section>
             </div>
 
-            <aside className="border-t border-ink/10 bg-sand/60 p-6 md:border-l md:border-t-0 md:p-10">
-              <h3 className="font-serif text-2xl">Buyurtmangiz</h3>
+            <aside className="border-t border-ink/10 bg-sand/60 p-6 md:border-s md:border-t-0 md:p-10">
+              <h3 className="font-serif text-2xl">{t("checkout.yourOrder")}</h3>
               {cart.length === 0 ? (
-                <p className="mt-6 text-sm text-stone-450">Savatcha bo'sh. Avval mahsulot qo'shing.</p>
+                <p className="mt-6 text-sm text-stone-450">{t("checkout.emptyCart")}</p>
               ) : (
                 <ul className="mt-6 space-y-4">
                   {cart.map((item) => {
-                    const p = getProduct(item.productId);
-                    if (!p) return null;
+                    const raw = getProduct(item.productId);
+                    if (!raw) return null;
+                    const p = localize(raw);
                     return (
                       <li key={item.key} className="flex items-center gap-4">
                         <div className="relative h-20 w-16 shrink-0 bg-sand">
                           <SmartImage src={p.images[0]} alt={p.name} className="h-full w-full" />
-                          <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-[10px] text-ivory">{item.qty}</span>
+                          <span className="absolute -end-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-ink text-[10px] text-ivory">{item.qty}</span>
                         </div>
                         <div className="flex-1">
                           <p className="font-serif text-lg leading-tight">{p.name}</p>
                           <p className="text-xs text-stone-450">
-                            {item.color} · {item.size}
+                            {colorName(item.color)} · {item.size}
                           </p>
                         </div>
                         <span className="text-sm">{money(p.priceUZS, item.qty)}</span>
@@ -287,17 +297,19 @@ export function CheckoutModal() {
               )}
 
               <dl className="mt-8 space-y-3 border-t border-ink/10 pt-6 text-sm">
-                <Row label="Oraliq summa" value={fmt(subtotalUZS, subtotalUSD)} />
-                <Row label={`Dostavka (${selectedShipping.name})`} value={freeShipping ? "Bepul" : fmt(shipUZS, shipUSD)} />
+                <Row label={t("cart.subtotal")} value={fmt(subtotalUZS, subtotalUSD)} />
+                <Row label={t("checkout.shippingRow", { name: shippingShown.name })} value={freeShipping ? t("free") : fmt(shipUZS, shipUSD)} />
                 <div className="flex justify-between border-t border-ink/10 pt-4 text-lg">
-                  <dt className="font-serif text-xl">Jami</dt>
+                  <dt className="font-serif text-xl">{t("checkout.total")}</dt>
                   <dd className="font-medium">{fmt(totalUZS, totalUSD)}</dd>
                 </div>
               </dl>
               {currency === "USD" && (
                 <p className="mt-3 text-[11px] leading-relaxed text-stone-450">
-                  USD narxlar 1 USD = {formatUZS(usdRate.rate)} kursi bo'yicha yaxlitlangan{!usdRate.live && " (taxminiy kurs)"}. To'lov{" "}
-                  {formatUZS(totalUZS)} miqdorida amalga oshiriladi.
+                  {t("checkout.usdNote", {
+                    rate: `${formatUZS(usdRate.rate, "UZS")}${usdRate.live ? "" : ` (${t("rate.fallback")})`}`,
+                    amount: formatUZS(totalUZS, "UZS"),
+                  })}
                 </p>
               )}
 
@@ -313,9 +325,7 @@ export function CheckoutModal() {
               >
                 <Lock size={14} /> {payLabel}
               </button>
-              <p className="mt-3 text-center text-[11px] text-stone-450">
-                To'lov 256-bit SSL orqali himoyalangan. Demo rejim — haqiqiy pul yechilmaydi.
-              </p>
+              <p className="mt-3 text-center text-[11px] text-stone-450">{t("checkout.secure")}</p>
             </aside>
           </form>
         )}
@@ -336,19 +346,20 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 }
 
 function Input({
-  label, value, onChange, placeholder, error, type = "text",
-}: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; error?: boolean; type?: string }) {
+  label, value, onChange, placeholder, error, errorText, type = "text", ltr = false,
+}: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; error?: boolean; errorText?: string; type?: string; ltr?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-[11px] uppercase tracking-[0.15em] text-ink/70">{label}</span>
       <input
         type={type}
         value={value}
+        dir={ltr ? "ltr" : undefined}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={cn("field", error && "border-[#8E2A2A] bg-[#8E2A2A]/5")}
+        className={cn("field", ltr && "text-start", error && "border-[#8E2A2A] bg-[#8E2A2A]/5")}
       />
-      {error && <span className="mt-1 block text-[11px] text-[#8E2A2A]">Ushbu maydonni to'ldiring</span>}
+      {error && <span className="mt-1 block text-[11px] text-[#8E2A2A]">{errorText}</span>}
     </label>
   );
 }
@@ -388,6 +399,7 @@ export function PaymentLogo({ id }: { id: PaymentMethod }) {
 }
 
 function ProcessingScreen({ payment, total }: { payment: PaymentMethod; total: string }) {
+  const { t } = useStore();
   const name = paymentMethods.find((m) => m.id === payment)!.name;
   return (
     <div className="flex min-h-[480px] flex-col items-center justify-center gap-6 p-10 text-center">
@@ -396,27 +408,25 @@ function ProcessingScreen({ payment, total }: { payment: PaymentMethod; total: s
       </div>
       <Loader2 size={34} strokeWidth={1.5} className="animate-spin text-gold" />
       <div>
-        <p className="font-serif text-3xl">{name} orqali to'lov amalga oshirilmoqda…</p>
-        <p className="mt-2 text-sm text-stone-450">Summa: {total}. Iltimos, sahifani yopmang.</p>
+        <p className="font-serif text-3xl">{t("checkout.processing", { name })}</p>
+        <p className="mt-2 text-sm text-stone-450">{t("checkout.processingNote", { total })}</p>
       </div>
     </div>
   );
 }
 
 function SuccessScreen({ orderId, name, total, eta, onClose }: { orderId: string; name: string; total: string; eta: string; onClose: () => void }) {
+  const { t } = useStore();
   return (
     <div className="flex min-h-[480px] flex-col items-center justify-center p-10 text-center">
       <div className="flex h-16 w-16 animate-fadeUp items-center justify-center rounded-full bg-[#2F7F5F] text-white">
         <Check size={30} />
       </div>
-      <p className="eyebrow mt-8">To'lov muvaffaqiyatli</p>
-      <h2 className="mt-3 font-serif text-4xl font-light md:text-5xl">Rahmat, {name}!</h2>
-      <p className="mt-4 max-w-md text-sm leading-relaxed text-ink/70">
-        Buyurtmangiz <b>#{orderId}</b> qabul qilindi. To'langan summa: <b>{total}</b>. Taxminiy yetkazib berish muddati — {eta}. Tasdiqlash SMS va
-        emailingizga yuborildi.
-      </p>
+      <p className="eyebrow mt-8">{t("checkout.success")}</p>
+      <h2 className="mt-3 font-serif text-4xl font-light md:text-5xl">{t("checkout.thanks", { name })}</h2>
+      <p className="mt-4 max-w-md text-sm leading-relaxed text-ink/70">{t("checkout.successText", { id: orderId, total, eta })}</p>
       <button onClick={onClose} className="btn-primary mt-10">
-        Xaridni davom ettirish
+        {t("checkout.continue")}
       </button>
     </div>
   );

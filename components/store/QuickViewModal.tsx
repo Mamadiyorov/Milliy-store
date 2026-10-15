@@ -9,7 +9,7 @@ import { SmartImage } from "./SmartImage";
 import { cn } from "@/lib/format";
 
 export function QuickViewModal() {
-  const { quickView: product, setQuickView, quickViewNeedsSelection } = useStore();
+  const { quickView: product, setQuickView, quickViewNeedsSelection, t } = useStore();
   const [active, setActive] = useState(0);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function QuickViewModal() {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink/50 backdrop-blur-sm animate-fadeIn" onClick={() => setQuickView(null)} />
       <div className="relative grid max-h-[92vh] w-full max-w-5xl animate-fadeUp overflow-y-auto bg-ivory md:grid-cols-2">
-        <button onClick={() => setQuickView(null)} className="absolute right-4 top-4 z-10 rounded-full bg-ivory/90 p-2" aria-label="Yopish">
+        <button onClick={() => setQuickView(null)} className="absolute end-4 top-4 z-10 rounded-full bg-ivory/90 p-2" aria-label={t("a.close")}>
           <X size={18} strokeWidth={1.5} />
         </button>
 
@@ -58,7 +58,7 @@ export function QuickViewModal() {
             onClick={() => setQuickView(null)}
             className="mt-6 inline-block text-[11px] uppercase tracking-[0.2em] underline underline-offset-4"
           >
-            To'liq ma'lumot →
+            {t("product.fullDetails")}
           </Link>
         </div>
       </div>

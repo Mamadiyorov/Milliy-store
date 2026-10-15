@@ -2,23 +2,25 @@
 
 import { useState } from "react";
 import { Minus, Plus, ShieldCheck, Star, Truck } from "lucide-react";
-import type { Product, Size } from "@/lib/mockData";
+import { categoryLabel, type Product, type Size } from "@/lib/mockData";
 import { cn } from "@/lib/format";
 import { useStore } from "./StoreProvider";
 
 /** Rang, o'lcham, miqdor tanlash va savatchaga qo'shish — Quick View va detal sahifasi uchun umumiy blok. */
 export function ProductPurchase({
-  product, onAdded, compact = false, needsSelection = false,
+  product: base, onAdded, compact = false, needsSelection = false,
 }: { product: Product; onAdded?: () => void; compact?: boolean; needsSelection?: boolean }) {
-  const { money, addToCart, setCartOpen, setCheckoutOpen } = useStore();
-  // Rang ham, o'lcham ham mijoz tomonidan aniq tanlanishi SHART — oldindan tanlab qo'yilmaydi
+  const { money, addToCart, setCartOpen, setCheckoutOpen, localize, colorName, language, t } = useStore();
+  const product = localize(base);
+  // Rang ham, o'lcham ham mijoz tomonidan aniq tanlanishi SHART — oldindan tanlab qo'yilmaydi.
+  // `color` — o'zbekcha rang nomi (savatcha/buyurtma kaliti); ekranda tarjimasi ko'rsatiladi.
   const [size, setSize] = useState<Size | null>(null);
   const [color, setColor] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
   const [sizeError, setSizeError] = useState(false);
   const [colorError, setColorError] = useState(false);
 
-  const missing = [!color && "rang", !size && "o'lcham"].filter(Boolean).join(" va ");
+  const missing = !color && !size ? "both" : !color ? "color" : !size ? "size" : null;
 
   const add = (buyNow = false) => {
     if (!size || !color) {
@@ -26,7 +28,7 @@ export function ProductPurchase({
       setColorError(!color);
       return;
     }
-    addToCart(product, size, color, qty);
+    addToCart(base, size, color, qty);
     onAdded?.();
     if (buyNow) setCheckoutOpen(true);
     else setCartOpen(true);
@@ -34,7 +36,7 @@ export function ProductPurchase({
 
   return (
     <div>
-      <p className="eyebrow">{product.category}</p>
+      <p className="eyebrow">{categoryLabel(product.category, language)}</p>
       <h1 className={cn("mt-2 font-serif font-light leading-tight", compact ? "text-3xl" : "text-4xl md:text-5xl")}>{product.name}</h1>
       <p className="mt-2 text-sm text-stone-450">{product.tagline}</p>
 
@@ -45,28 +47,22 @@ export function ProductPurchase({
           ))}
         </div>
         <span className="text-stone-450">
-          {product.rating.toFixed(1)} · {product.reviews} ta sharh
+          {product.rating.toFixed(1)} · {t("product.reviews", { n: product.reviews })}
         </span>
       </div>
 
       <div className="mt-6 flex items-baseline gap-3">
         <span className="text-2xl">{money(product.priceUZS)}</span>
-        {product.compareAtUZS && (
-          <span className="text-sm text-stone-450 line-through">
-            {money(product.compareAtUZS)}
-          </span>
-        )}
+        {product.compareAtUZS && <span className="text-sm text-stone-450 line-through">{money(product.compareAtUZS)}</span>}
       </div>
 
       {needsSelection && missing && (
-        <div className="mt-6 border border-gold/40 bg-gold/10 px-4 py-3 text-xs leading-relaxed text-gold-dark">
-          Savatchaga qo'shishdan oldin, iltimos, <b>{missing}</b>ni tanlang.
-        </div>
+        <div className="mt-6 border border-gold/40 bg-gold/10 px-4 py-3 text-xs leading-relaxed text-gold-dark">{t(`select.prompt.${missing}`)}</div>
       )}
 
       <div className="mt-8">
         <p className="text-[11px] uppercase tracking-[0.2em]">
-          Rang: <span className="text-stone-450 normal-case tracking-normal">{color ?? "tanlanmagan"}</span>
+          {t("product.color")}: <span className="text-stone-450 normal-case tracking-normal">{color ? colorName(color) : t("product.notSelected")}</span>
         </p>
         <div className="mt-3 flex gap-3">
           {product.colors.map((c) => (
@@ -76,8 +72,8 @@ export function ProductPurchase({
                 setColor(c.name);
                 setColorError(false);
               }}
-              title={c.name}
-              aria-label={c.name}
+              title={colorName(c.name)}
+              aria-label={colorName(c.name)}
               aria-pressed={color === c.name}
               className={cn(
                 "h-8 w-8 rounded-full border-2 ring-offset-2 ring-offset-ivory transition",
@@ -88,13 +84,13 @@ export function ProductPurchase({
             />
           ))}
         </div>
-        {colorError && <p className="mt-2 text-xs text-[#8E2A2A]">Iltimos, rangni tanlang</p>}
+        {colorError && <p className="mt-2 text-xs text-[#8E2A2A]">{t("product.colorError")}</p>}
       </div>
 
       <div className="mt-7">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] uppercase tracking-[0.2em]">O'lcham</p>
-          <button className="text-[11px] text-stone-450 underline underline-offset-4">O'lchamlar jadvali</button>
+          <p className="text-[11px] uppercase tracking-[0.2em]">{t("product.size")}</p>
+          <button className="text-[11px] text-stone-450 underline underline-offset-4">{t("product.sizeGuide")}</button>
         </div>
         <div className="mt-3 grid grid-cols-4 gap-2">
           {(["S", "M", "L", "XL"] as Size[]).map((s) => {
@@ -119,43 +115,41 @@ export function ProductPurchase({
             );
           })}
         </div>
-        {sizeError && <p className="mt-2 text-xs text-[#8E2A2A]">Iltimos, o'lchamni tanlang</p>}
+        {sizeError && <p className="mt-2 text-xs text-[#8E2A2A]">{t("product.sizeError")}</p>}
       </div>
 
       {(sizeError || colorError) && missing && (
         <p role="alert" className="mt-6 bg-[#8E2A2A]/5 px-4 py-3 text-xs text-[#8E2A2A]">
-          Savatchaga qo'shish uchun {missing}ni tanlashingiz shart.
+          {t(`select.required.${missing}`)}
         </p>
       )}
 
       <div className="mt-7 flex gap-3">
         <div className="flex items-center border border-ink/20">
-          <button className="px-3 py-4" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Kamaytirish">
+          <button className="px-3 py-4" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label={t("a.decrease")}>
             <Minus size={13} />
           </button>
           <span className="w-8 text-center text-sm">{qty}</span>
-          <button className="px-3 py-4" onClick={() => setQty((q) => Math.min(product.stock, q + 1))} aria-label="Ko'paytirish">
+          <button className="px-3 py-4" onClick={() => setQty((q) => Math.min(product.stock, q + 1))} aria-label={t("a.increase")}>
             <Plus size={13} />
           </button>
         </div>
         <button onClick={() => add(false)} className="btn-primary flex-1">
-          Savatchaga qo'shish
+          {t("product.addToCart")}
         </button>
       </div>
       <button onClick={() => add(true)} className="btn-outline mt-3 w-full">
-        Hoziroq sotib olish
+        {t("product.buyNow")}
       </button>
 
-      {product.stock < 10 && (
-        <p className="mt-4 text-xs text-gold-dark">Omborda faqat {product.stock} dona qoldi</p>
-      )}
+      {product.stock < 10 && <p className="mt-4 text-xs text-gold-dark">{t("product.lowStock", { n: product.stock })}</p>}
 
       <div className="mt-8 space-y-3 border-t border-ink/10 pt-6 text-xs text-ink/70">
         <p className="flex items-center gap-3">
-          <Truck size={15} strokeWidth={1.5} /> Toshkent bo'ylab 1 kun · DHL orqali dunyo bo'ylab 3–5 kun
+          <Truck size={15} strokeWidth={1.5} /> {t("product.shippingInfo")}
         </p>
         <p className="flex items-center gap-3">
-          <ShieldCheck size={15} strokeWidth={1.5} /> 14 kun ichida bepul qaytarish · Haqiqiylik sertifikati
+          <ShieldCheck size={15} strokeWidth={1.5} /> {t("product.returnsInfo")}
         </p>
       </div>
     </div>
