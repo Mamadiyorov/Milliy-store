@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, CreditCard, Globe, Loader2, Lock, MapPin, Truck, X } from "lucide-react";
-import { countries, paymentMethods, shippingOptions, type PaymentMethod, type ShippingOption } from "@/lib/mockData";
+import { countries, paymentMethods, shippingOptions, type OrderLine, type PaymentMethod, type ShippingOption } from "@/lib/mockData";
 import { cn, formatPrice, formatUZS } from "@/lib/format";
-import { getProduct, useStore, type NewOrder } from "./StoreProvider";
+import { getProduct, useStore, type CustomerProfile, type NewOrder } from "./StoreProvider";
 import { SmartImage } from "./SmartImage";
 
 const FREE_SHIPPING_UZS = 3_000_000;
@@ -24,7 +24,7 @@ interface FormState {
 const initialForm: FormState = { firstName: "", lastName: "", phone: "+998 ", email: "", country: "UZ", city: "", address: "" };
 
 export function CheckoutModal() {
-  const { checkoutOpen, setCheckoutOpen, cart, currency, subtotalUZS, subtotalUSD, clearCart, addOrder } = useStore();
+  const { checkoutOpen, setCheckoutOpen, cart, currency, subtotalUZS, subtotalUSD, clearCart, addOrder, profile, saveProfile } = useStore();
   const [form, setForm] = useState<FormState>(initialForm);
   const [shipping, setShipping] = useState<ShippingOption["id"]>("tashkent");
   const [payment, setPayment] = useState<PaymentMethod>("payme");
@@ -42,6 +42,14 @@ export function CheckoutModal() {
     if (!isDomestic && payment !== "visa") setPayment("visa");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.country]);
+
+  // Saqlangan profil bo'lsa — checkout ochilganda formani avtomatik to'ldiramiz
+  useEffect(() => {
+    if (!checkoutOpen || stage !== "form" || !profile) return;
+    setForm({ ...initialForm, ...profile });
+    setErrors({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkoutOpen]);
 
   useEffect(() => {
     if (!checkoutOpen) return;
@@ -91,17 +99,29 @@ export function CheckoutModal() {
     // Buyurtma obyektini submit paytidagi savatcha holatidan yig'amiz
     const methodName = paymentMethods.find((m) => m.id === payment)!.name;
     const countryName = countries.find((c) => c.code === form.country)?.name ?? form.country;
-    const lines = cart.flatMap((item) => {
+    const lineItems: OrderLine[] = cart.flatMap((item) => {
       const p = getProduct(item.productId);
-      return p ? [`${p.name} (${item.size}, ${item.color})${item.qty > 1 ? ` ×${item.qty}` : ""}`] : [];
+      if (!p) return [];
+      const hex = p.colors.find((c) => c.name === item.color)?.hex;
+      return [{ name: p.name, size: item.size, color: item.color, colorHex: hex, qty: item.qty, priceUZS: p.priceUZS }];
     });
-    const newOrder: NewOrder = {
-      customer: `${form.firstName.trim()} ${form.lastName.trim()}`,
-      email: form.email.trim(),
+    const customer: CustomerProfile = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
       phone: form.phone.trim(),
-      location: isDomestic ? form.city.trim() : `${form.city.trim()}, ${countryName}`,
+      email: form.email.trim(),
+      country: form.country,
+      city: form.city.trim(),
       address: form.address.trim(),
-      product: lines.join(", "),
+    };
+    const newOrder: NewOrder = {
+      customer: `${customer.firstName} ${customer.lastName}`,
+      email: customer.email,
+      phone: customer.phone,
+      location: isDomestic ? customer.city : `${customer.city}, ${countryName}`,
+      address: customer.address,
+      product: lineItems.map((l) => `${l.name} (${l.size}, ${l.color})${l.qty > 1 ? ` ×${l.qty}` : ""}`).join(", "),
+      lineItems,
       items: cart.reduce((n, i) => n + i.qty, 0),
       amountUZS: totalUZS,
       method: payment === "payme" ? "Payme" : payment === "click" ? "Click" : "Visa",
@@ -114,6 +134,7 @@ export function CheckoutModal() {
     setStage("processing");
     setTimeout(() => {
       const saved = addOrder(newOrder);
+      saveProfile(customer); // keyingi xarid uchun eslab qolamiz (djafariy_customer_profile)
       setOrderId(saved.id.replace("#", ""));
       setStage("success");
       clearCart();
@@ -139,6 +160,11 @@ export function CheckoutModal() {
             <div className="p-6 md:p-10">
               <p className="eyebrow">Xavfsiz checkout</p>
               <h2 className="mt-2 font-serif text-4xl font-light">Buyurtmani rasmiylashtirish</h2>
+              {profile ? (
+                <p className="mt-3 text-xs text-gold-dark">✓ Ma'lumotlar saqlangan profilingizdan avtomatik to'ldirildi. Kerak bo'lsa, o'zgartiring.</p>
+              ) : (
+                <p className="mt-3 text-xs text-stone-450">Ma'lumotlaringiz keyingi xaridlar uchun shu brauzerda saqlanadi.</p>
+              )}
 
               <Section icon={<MapPin size={15} />} title="Mijoz ma'lumotlari">
                 <div className="grid gap-3 sm:grid-cols-2">

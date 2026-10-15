@@ -9,7 +9,7 @@ import { useStore } from "./StoreProvider";
 import { SmartImage } from "./SmartImage";
 
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
-  const { currency, addToCart, setQuickView } = useStore();
+  const { currency, requestSelection, setQuickView } = useStore();
   const [liked, setLiked] = useState(false);
 
   return (
@@ -41,9 +41,11 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           <Heart size={14} strokeWidth={1.5} className={cn(liked && "fill-[#8E2A2A] text-[#8E2A2A]")} />
         </button>
 
+        {/* Kartochkada rang/o'lcham tanlanmagan — savatga to'g'ridan-to'g'ri emas, Quick View'da tanlash so'raladi */}
         <div className="absolute inset-x-3 bottom-3 flex translate-y-4 gap-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <button
-            onClick={() => addToCart(product, product.sizes[Math.min(1, product.sizes.length - 1)], product.colors[0].name)}
+            onClick={() => requestSelection(product)}
+            title="Rang va o'lchamni tanlash"
             className="flex flex-1 items-center justify-center gap-2 bg-ink py-3 text-[10px] font-medium uppercase tracking-[0.2em] text-ivory transition hover:bg-gold-dark"
           >
             <ShoppingBag size={13} /> Savatchaga qo'shish

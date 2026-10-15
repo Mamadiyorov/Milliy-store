@@ -16,6 +16,16 @@ export interface CartItem {
 
 export type NewOrder = Omit<Order, "id" | "date" | "createdAt">;
 
+export interface CustomerProfile {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  country: string;
+  city: string;
+  address: string;
+}
+
 interface StoreState {
   currency: Currency;
   setCurrency: (c: Currency) => void;
@@ -33,7 +43,16 @@ interface StoreState {
   setCheckoutOpen: (v: boolean) => void;
   quickView: Product | null;
   setQuickView: (p: Product | null) => void;
+  /** Kartochkadan "Savatchaga qo'shish" — Quick View'ni rang/o'lcham tanlash so'rovi bilan ochadi. */
+  requestSelection: (p: Product) => void;
+  quickViewNeedsSelection: boolean;
   toast: string | null;
+  // Mijoz profili (LocalStorage: djafariy_customer_profile)
+  profile: CustomerProfile | null;
+  saveProfile: (p: CustomerProfile) => void;
+  clearProfile: () => void;
+  profileOpen: boolean;
+  setProfileOpen: (v: boolean) => void;
   // Global ma'lumotlar (do'kon + admin panel uchun umumiy)
   products: Product[];
   addProduct: (p: Product) => void;
@@ -43,8 +62,9 @@ interface StoreState {
 }
 
 const StoreContext = createContext<StoreState | null>(null);
-const STORAGE_KEY = "zarboft-store-v1";
-const DATA_KEY = "zarboft-data-v1";
+const STORAGE_KEY = "djafariy-store-v1";
+const DATA_KEY = "djafariy-data-v1";
+export const PROFILE_KEY = "djafariy_customer_profile";
 
 const MONTHS = ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"];
 
@@ -80,8 +100,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [quickView, setQuickView] = useState<Product | null>(null);
+  const [quickView, setQuickViewState] = useState<Product | null>(null);
+  const [quickViewNeedsSelection, setQuickViewNeedsSelection] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -91,6 +114,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (saved.cart) setCart(saved.cart.filter((i) => getProduct(i.productId)));
         if (saved.currency) setCurrency(saved.currency);
       }
+    } catch {}
+    try {
+      const rawProfile = localStorage.getItem(PROFILE_KEY);
+      if (rawProfile) setProfile(JSON.parse(rawProfile));
     } catch {}
     const data = readData();
     if (data.orders) setOrders(data.orders);
@@ -128,7 +155,33 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t);
   }, [toast]);
 
+  const setQuickView = useCallback((p: Product | null) => {
+    setQuickViewNeedsSelection(false);
+    setQuickViewState(p);
+  }, []);
+
+  const requestSelection = useCallback((p: Product) => {
+    setQuickViewNeedsSelection(true);
+    setQuickViewState(p);
+  }, []);
+
+  const saveProfile = useCallback((p: CustomerProfile) => {
+    setProfile(p);
+    try {
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    } catch {}
+  }, []);
+
+  const clearProfile = useCallback(() => {
+    setProfile(null);
+    try {
+      localStorage.removeItem(PROFILE_KEY);
+    } catch {}
+  }, []);
+
   const addToCart = useCallback((product: Product, size: Size, color: string, qty = 1) => {
+    // Rang va o'lchamsiz savatchaga qo'shib bo'lmaydi
+    if (!size || !color) return;
     const key = `${product.id}-${size}-${color}`;
     setCart((prev) => {
       const existing = prev.find((i) => i.key === key);
@@ -177,10 +230,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return {
       currency, setCurrency, cart, cartCount, subtotalUZS, subtotalUSD,
       addToCart, updateQty, removeItem, clearCart,
-      cartOpen, setCartOpen, checkoutOpen, setCheckoutOpen, quickView, setQuickView, toast,
+      cartOpen, setCartOpen, checkoutOpen, setCheckoutOpen, quickView, setQuickView, requestSelection, quickViewNeedsSelection, toast,
+      profile, saveProfile, clearProfile, profileOpen, setProfileOpen,
       products, addProduct, orders, addOrder, setOrderStatus,
     };
-  }, [currency, cart, addToCart, updateQty, removeItem, clearCart, cartOpen, checkoutOpen, quickView, toast, products, addProduct, orders, addOrder, setOrderStatus]);
+  }, [
+    currency, cart, addToCart, updateQty, removeItem, clearCart, cartOpen, checkoutOpen, quickView, setQuickView, requestSelection,
+    quickViewNeedsSelection, toast, profile, saveProfile, clearProfile, profileOpen, products, addProduct, orders, addOrder, setOrderStatus,
+  ]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

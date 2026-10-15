@@ -44,7 +44,7 @@ export default function HomePage() {
               Meros — <em className="text-gold-dark">zamonaviy</em> talqinda
             </h2>
             <p className="mt-6 text-sm leading-relaxed text-ink/70 md:text-base">
-              ZARBOFT — fors tilidan &laquo;oltin to'qilgan&raquo; degan ma'noni anglatadi. Biz o'zbek hunarmandchiligining eng nafis an'analarini — abr bo'yoqlari,
+              DJAFARIY — nafislik, sokin hashamat va hunarmandchilikka hurmat. Biz o'zbek hunarmandchiligining eng nafis an'analarini — abr bo'yoqlari,
               atlas to'qimachiligi va zardo'zlikni — minimalistik, kundalik kiyiladigan siluetlarga aylantiramiz.
             </p>
             <div className="mt-10 grid grid-cols-3 gap-6 border-t border-ink/10 pt-8">

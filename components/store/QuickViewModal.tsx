@@ -9,7 +9,7 @@ import { SmartImage } from "./SmartImage";
 import { cn } from "@/lib/format";
 
 export function QuickViewModal() {
-  const { quickView: product, setQuickView } = useStore();
+  const { quickView: product, setQuickView, quickViewNeedsSelection } = useStore();
   const [active, setActive] = useState(0);
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export function QuickViewModal() {
         </div>
 
         <div className="p-6 md:p-10">
-          <ProductPurchase product={product} compact onAdded={() => setQuickView(null)} />
+          <ProductPurchase key={product.id} product={product} compact needsSelection={quickViewNeedsSelection} onAdded={() => setQuickView(null)} />
           <Link
             href={`/product/${product.slug}`}
             onClick={() => setQuickView(null)}

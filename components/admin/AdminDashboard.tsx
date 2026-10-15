@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity, ArrowUpRight, Bell, Check, CreditCard, Download, LayoutDashboard, LogOut, Menu, Package,
-  Plus, Search, Settings, ShoppingCart, Store, Users, Wallet, X,
+  Activity, ArrowUpRight, Bell, Check, CreditCard, Download, LayoutDashboard, LogOut, Mail, MapPin, Menu, Package,
+  Phone, Plus, Search, Settings, ShoppingCart, Store, Truck, Users, Wallet, X,
 } from "lucide-react";
+import { Logo } from "@/components/store/Logo";
 import {
   adminStats, monthlyRevenue, paymentBreakdown, recentCustomers,
   recentOrders, topRegions, type Order, type OrderStatus, type Product,
@@ -41,6 +42,9 @@ export function AdminDashboard() {
   const [notice, setNotice] = useState<string | null>(null);
   const [visitors, setVisitors] = useState(adminStats.visitorsToday);
   const [now, setNow] = useState<Date | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedOrder = orders.find((o) => o.id === selectedId) ?? null;
+  const closeDetails = useCallback(() => setSelectedId(null), []);
 
   const markPaid = (order: Order) => {
     if (order.status !== "Kutilmoqda") return;
@@ -96,9 +100,9 @@ export function AdminDashboard() {
         )}
       >
         <div className="flex h-16 items-center justify-between px-6">
-          <Link href="/" className="leading-none">
-            <span className="block font-serif text-xl tracking-[0.3em] text-white">ZARBOFT</span>
-            <span className="mt-1 block text-[8px] tracking-[0.5em] text-gold-light">• MILLIY • ADMIN</span>
+          <Link href="/" className="flex items-center gap-3 leading-none">
+            <Logo width={52} />
+            <span className="text-[9px] uppercase tracking-[0.4em] text-gold-light">Admin</span>
           </Link>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)} aria-label="Yopish">
             <X size={18} />
@@ -144,9 +148,9 @@ export function AdminDashboard() {
         </div>
 
         <div className="flex items-center gap-3 border-t border-white/[0.06] p-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gold/20 text-xs font-semibold text-gold-light">ZA</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gold/20 text-xs font-semibold text-gold-light">DA</div>
           <div className="flex-1">
-            <p className="text-sm text-white">Zarboft Admin</p>
+            <p className="text-sm text-white">Djafariy Admin</p>
             <p className="text-[11px] text-zinc-500">Bosh menejer</p>
           </div>
           <LogOut size={16} className="text-zinc-500" />
@@ -226,7 +230,7 @@ export function AdminDashboard() {
               </div>
               <div className="grid gap-4 xl:grid-cols-3">
                 <Card className="xl:col-span-2">
-                  <OrdersTable orders={orders.slice(0, 7)} title="So'nggi buyurtmalar" onSeeAll={() => setView("orders")} />
+                  <OrdersTable orders={orders.slice(0, 7)} title="So'nggi buyurtmalar" onSeeAll={() => setView("orders")} onSelect={(o) => setSelectedId(o.id)} />
                 </Card>
                 <CustomersCard />
               </div>
@@ -238,6 +242,7 @@ export function AdminDashboard() {
               <OrdersTable
                 orders={orders}
                 title={`Barcha buyurtmalar (${orders.length})`}
+                onSelect={(o) => setSelectedId(o.id)}
                 onMarkPaid={(order) => {
                   markPaid(order);
                   setNotice(`${order.id} to'langan deb belgilandi`);
@@ -295,6 +300,17 @@ export function AdminDashboard() {
             setAddOpen(false);
             setView("products");
             setNotice(`"${p.name}" katalogga qo'shildi`);
+          }}
+        />
+      )}
+
+      {selectedOrder && (
+        <OrderDetailsModal
+          order={selectedOrder}
+          onClose={closeDetails}
+          onMarkPaid={(order) => {
+            markPaid(order);
+            setNotice(`${order.id} to'langan deb belgilandi`);
           }}
         />
       )}
@@ -381,9 +397,106 @@ function CustomersCard() {
   );
 }
 
+/** Buyurtma qatorlari: mahsulot nomi + rang (namuna bilan) + o'lcham + miqdor. */
+function LineItems({ order, detailed = false }: { order: Order; detailed?: boolean }) {
+  if (!order.lineItems?.length) {
+    return (
+      <span className="text-zinc-300">
+        {order.product}
+        {order.items > 1 && <span className="text-zinc-500"> ×{order.items}</span>}
+      </span>
+    );
+  }
+  return (
+    <ul className={cn(detailed ? "space-y-3" : "space-y-1.5")}>
+      {order.lineItems.map((l, i) => (
+        <li key={i} className={cn(detailed && "flex items-center justify-between gap-4 rounded-xl bg-white/[0.03] p-3")}>
+          <div>
+            <p className="text-zinc-200">
+              {l.name}
+              {l.qty > 1 && <span className="text-zinc-500"> ×{l.qty}</span>}
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-zinc-300">
+                <span className="h-2.5 w-2.5 rounded-full ring-1 ring-white/20" style={{ background: l.colorHex ?? "#888" }} />
+                {l.color}
+              </span>
+              <span className="rounded-md bg-gold/15 px-1.5 py-0.5 font-semibold text-gold-light">O'lcham: {l.size}</span>
+            </div>
+          </div>
+          {detailed && <p className="shrink-0 text-sm tabular-nums text-zinc-300">{formatUZS(l.priceUZS * l.qty)}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function OrderDetailsModal({ order, onClose, onMarkPaid }: { order: Order; onClose: () => void; onMarkPaid: (o: Order) => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative max-h-[92vh] w-full max-w-xl animate-fadeUp overflow-y-auto rounded-2xl border border-white/10 bg-night-800 p-6">
+        <button onClick={onClose} className="absolute right-4 top-4 text-zinc-500 hover:text-white" aria-label="Yopish">
+          <X size={18} />
+        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="font-mono text-lg text-white">{order.id}</p>
+          <StatusBadge status={order.status} />
+        </div>
+        <p className="mt-1 text-xs text-zinc-500">{order.date}</p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <Detail icon={<Users size={14} />} label="Mijoz" value={order.customer} />
+          <Detail icon={<Phone size={14} />} label="Telefon" value={order.phone ? <a href={`tel:${order.phone.replace(/\s/g, "")}`} className="hover:underline">{order.phone}</a> : "—"} />
+          <Detail icon={<Mail size={14} />} label="Email" value={order.email || "—"} />
+          <Detail icon={<Truck size={14} />} label="Dostavka" value={order.shipping ?? "—"} />
+          <div className="sm:col-span-2">
+            <Detail icon={<MapPin size={14} />} label="Yetkazib berish manzili" value={[order.location, order.address].filter(Boolean).join(", ")} />
+          </div>
+        </div>
+
+        <p className="mt-6 text-[11px] uppercase tracking-wider text-zinc-500">Mahsulotlar · rang va o'lcham</p>
+        <div className="mt-3">
+          <LineItems order={order} detailed />
+        </div>
+
+        <div className="mt-6 flex items-center justify-between border-t border-white/[0.06] pt-4">
+          <div>
+            <MethodBadge method={order.method} />
+            {order.paymentStatus && <p className="mt-1 text-[11px] text-emerald-400/80">{order.paymentStatus}</p>}
+          </div>
+          <p className="text-xl font-semibold tabular-nums text-white">{formatUZS(order.amountUZS)}</p>
+        </div>
+        {order.status === "Kutilmoqda" && (
+          <button onClick={() => onMarkPaid(order)} className="mt-5 w-full rounded-xl bg-gold py-2.5 text-sm font-medium text-night-900 hover:bg-gold-light">
+            To'langan deb belgilash
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-xl bg-white/[0.03] p-3">
+      <p className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+        {icon} {label}
+      </p>
+      <p className="mt-1 break-words text-sm text-zinc-200">{value}</p>
+    </div>
+  );
+}
+
 function OrdersTable({
-  orders, title, onSeeAll, onMarkPaid,
-}: { orders: Order[]; title: string; onSeeAll?: () => void; onMarkPaid?: (order: Order) => void }) {
+  orders, title, onSeeAll, onMarkPaid, onSelect,
+}: { orders: Order[]; title: string; onSeeAll?: () => void; onMarkPaid?: (order: Order) => void; onSelect: (order: Order) => void }) {
   const [filter, setFilter] = useState<"Barchasi" | OrderStatus>("Barchasi");
   const shown = useMemo(() => (filter === "Barchasi" ? orders : orders.filter((o) => o.status === filter)), [orders, filter]);
 
@@ -404,12 +517,12 @@ function OrdersTable({
         </div>
       </div>
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="w-full min-w-[960px] text-left text-sm">
           <thead>
             <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-zinc-500">
               <th className="py-3 pr-4 font-medium">Buyurtma</th>
-              <th className="py-3 pr-4 font-medium">Mijoz</th>
-              <th className="py-3 pr-4 font-medium">Mahsulot</th>
+              <th className="py-3 pr-4 font-medium">Mijoz · telefon · manzil</th>
+              <th className="py-3 pr-4 font-medium">Mahsulot · rang · o'lcham</th>
               <th className="py-3 pr-4 font-medium">To'lov</th>
               <th className="py-3 pr-4 font-medium">Summa</th>
               <th className="py-3 pr-4 font-medium">Status</th>
@@ -418,19 +531,24 @@ function OrdersTable({
           </thead>
           <tbody>
             {shown.map((o) => (
-              <tr key={o.id + o.date} className="border-b border-white/[0.04] transition hover:bg-white/[0.02]">
+              <tr
+                key={o.id + o.date}
+                onClick={() => onSelect(o)}
+                className="cursor-pointer border-b border-white/[0.04] align-top transition hover:bg-white/[0.02]"
+                title="Buyurtma tafsilotlari"
+              >
                 <td className="py-3.5 pr-4">
                   <p className="font-mono text-xs text-white">{o.id}</p>
                   <p className="text-[11px] text-zinc-500">{o.date}</p>
                 </td>
-                <td className="py-3.5 pr-4">
+                <td className="max-w-[280px] py-3.5 pr-4">
                   <p className="text-zinc-200">{o.customer}</p>
-                  <p className="text-[11px] text-zinc-500">{o.address ? `${o.location}, ${o.address}` : o.location}</p>
+                  {o.phone && <p className="mt-0.5 text-[11px] tabular-nums text-zinc-300">{o.phone}</p>}
+                  <p className="mt-0.5 text-[11px] leading-snug text-zinc-500">{[o.location, o.address].filter(Boolean).join(", ")}</p>
                 </td>
-                <td className="max-w-[260px] py-3.5 pr-4 text-zinc-300">
-                  {o.product}
-                  {o.items > 1 && !o.createdAt && <span className="text-zinc-500"> ×{o.items}</span>}
-                  {o.shipping && <p className="text-[11px] text-zinc-500">Dostavka: {o.shipping}</p>}
+                <td className="max-w-[300px] py-3.5 pr-4">
+                  <LineItems order={o} />
+                  {o.shipping && <p className="mt-1 text-[11px] text-zinc-500">Dostavka: {o.shipping}</p>}
                 </td>
                 <td className="py-3.5 pr-4">
                   <MethodBadge method={o.method} />
@@ -443,7 +561,12 @@ function OrdersTable({
                 {onMarkPaid && (
                   <td className="py-3.5 text-right">
                     {o.status === "Kutilmoqda" && (
-                      <button onClick={() => onMarkPaid(o)}className="rounded-lg border border-white/10 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-white/5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMarkPaid(o);
+                        }}
+                        className="rounded-lg border border-white/10 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-white/5">
                         To'langan deb belgilash
                       </button>
                     )}

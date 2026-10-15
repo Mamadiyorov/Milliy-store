@@ -13,7 +13,7 @@ const serif = Cormorant_Garamond({
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "ZARBOFT • MILLIY — O'zbek milliy kiyimlari",
+  title: "DJAFARIY — Nafis milliy kiyimlar",
   description: "Marg'ilon ipagi, Buxoro zardo'ziligi va zamonaviy siluetlar. Kuz-Qish Milliy To'plami 2026.",
 };
 

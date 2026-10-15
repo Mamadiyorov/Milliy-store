@@ -1,4 +1,4 @@
-// ZARBOFT • MILLIY — demo/portfolio uchun mock ma'lumotlar.
+// DJAFARIY — demo/portfolio uchun mock ma'lumotlar.
 // Barcha raqamlar va ismlar to'qima; real tizimga ulanganda API bilan almashtiriladi.
 
 export type Currency = "UZS" | "USD";
@@ -360,20 +360,29 @@ export const paymentMethods: { id: PaymentMethod; name: string; note: string; co
 
 export type OrderStatus = "To'langan" | "Kutilmoqda" | "Bekor qilingan";
 
+export interface OrderLine {
+  name: string;
+  size: Size;
+  color: string;
+  colorHex?: string;
+  qty: number;
+  priceUZS: number;
+}
+
 export interface Order {
   id: string;
   customer: string;
   email: string;
+  phone?: string;
   location: string;
-  product: string;
+  address?: string;
+  product: string; // qisqa matnli tavsif (qidiruv/eksport uchun)
+  lineItems?: OrderLine[]; // har bir mahsulot: rang, o'lcham, miqdor
   items: number;
   amountUZS: number;
   method: "Payme" | "Click" | "Visa";
   status: OrderStatus;
   date: string;
-  // Checkout orqali kelgan buyurtmalar uchun qo'shimcha maydonlar
-  phone?: string;
-  address?: string;
   shipping?: string;
   paymentStatus?: string; // masalan: "Payme orqali to'landi"
   createdAt?: number;
@@ -413,15 +422,21 @@ export const paymentBreakdown = [
   { method: "Visa", share: 14, amountUZS: 67_950_000, color: "#C9AD84" },
 ];
 
+const line = (productId: string, size: Size, colorName: string, qty = 1): OrderLine => {
+  const p = products.find((x) => x.id === productId)!;
+  const c = p.colors.find((x) => x.name === colorName)!;
+  return { name: p.name, size, color: c.name, colorHex: c.hex, qty, priceUZS: p.priceUZS };
+};
+
 export const recentOrders: Order[] = [
-  { id: "#ZM-10482", customer: "Madina Karimova", email: "madina.k@mail.uz", location: "Toshkent", product: "Shoyi Adras Chopon", items: 1, amountUZS: 2_485_000, method: "Payme", status: "To'langan", date: "14 Okt, 14:32" },
-  { id: "#ZM-10481", customer: "Aziza Rahimova", email: "aziza.r@gmail.com", location: "Samarqand", product: "Marg'ilon Atlas Ko'ylak", items: 2, amountUZS: 2_610_000, method: "Click", status: "Kutilmoqda", date: "14 Okt, 13:10" },
-  { id: "#ZM-10480", customer: "Emma Schneider", email: "emma.s@web.de", location: "Berlin, Germaniya", product: "Ipak Sharf", items: 3, amountUZS: 1_702_750, method: "Visa", status: "To'langan", date: "14 Okt, 11:47" },
-  { id: "#ZM-10479", customer: "Jasur Toshmatov", email: "jasur.t@inbox.uz", location: "Buxoro", product: "Buxoro Zardo'zi Do'ppi", items: 1, amountUZS: 700_000, method: "Payme", status: "To'langan", date: "14 Okt, 10:05" },
-  { id: "#ZM-10478", customer: "Layla Al-Mansouri", email: "layla@outlook.ae", location: "Dubay, BAA", product: "Adras Palto", items: 1, amountUZS: 3_592_750, method: "Visa", status: "Kutilmoqda", date: "13 Okt, 22:18" },
-  { id: "#ZM-10477", customer: "Nilufar Usmonova", email: "nilu.u@mail.ru", location: "Farg'ona", product: "Xonatlas Nimcha", items: 1, amountUZS: 940_000, method: "Payme", status: "To'langan", date: "13 Okt, 19:42" },
-  { id: "#ZM-10476", customer: "Sardor Aliyev", email: "sardor.a@gmail.com", location: "Toshkent", product: "Zardo'zi Belbog'", items: 1, amountUZS: 575_000, method: "Click", status: "Bekor qilingan", date: "13 Okt, 16:20" },
-  { id: "#ZM-10475", customer: "Kim Soo-ah", email: "sooah.kim@naver.com", location: "Seul, Koreya", product: "Atlas Ro'mol", items: 4, amountUZS: 1_882_750, method: "Visa", status: "To'langan", date: "13 Okt, 09:58" },
+  { id: "#ZM-10482", customer: "Madina Karimova", email: "madina.k@mail.uz", phone: "+998 90 123 45 67", location: "Toshkent", address: "Yunusobod tumani, 4-kvartal, 12-uy, 45-xonadon", product: "Shoyi Adras Chopon", lineItems: [line("p-001", "M", "Anor qizil")], items: 1, amountUZS: 2_485_000, method: "Payme", status: "To'langan", date: "14 Okt, 14:32" },
+  { id: "#ZM-10481", customer: "Aziza Rahimova", email: "aziza.r@gmail.com", phone: "+998 93 456 78 90", location: "Samarqand", address: "Registon ko'chasi, 18-uy", product: "Marg'ilon Atlas Ko'ylak", lineItems: [line("p-002", "S", "Feruza", 2)], items: 2, amountUZS: 2_610_000, method: "Click", status: "Kutilmoqda", date: "14 Okt, 13:10" },
+  { id: "#ZM-10480", customer: "Emma Schneider", email: "emma.s@web.de", phone: "+49 151 2345 6789", location: "Berlin, Germaniya", address: "Torstraße 112, 10119", product: "Ipak Sharf", lineItems: [line("p-005", "S", "Za'faron", 2), line("p-005", "M", "Moviy")], items: 3, amountUZS: 1_702_750, method: "Visa", status: "To'langan", date: "14 Okt, 11:47" },
+  { id: "#ZM-10479", customer: "Jasur Toshmatov", email: "jasur.t@inbox.uz", phone: "+998 91 222 33 44", location: "Buxoro", address: "Bahouddin Naqshband ko'chasi, 7-uy", product: "Buxoro Zardo'zi Do'ppi", lineItems: [line("p-003", "L", "Qora baxmal")], items: 1, amountUZS: 700_000, method: "Payme", status: "To'langan", date: "14 Okt, 10:05" },
+  { id: "#ZM-10478", customer: "Layla Al-Mansouri", email: "layla@outlook.ae", phone: "+971 50 123 4567", location: "Dubay, BAA", address: "Jumeirah Beach Residence, Tower 3, Apt 1204", product: "Adras Palto", lineItems: [line("p-006", "M", "Bordo")], items: 1, amountUZS: 3_592_750, method: "Visa", status: "Kutilmoqda", date: "13 Okt, 22:18" },
+  { id: "#ZM-10477", customer: "Nilufar Usmonova", email: "nilu.u@mail.ru", phone: "+998 97 555 66 77", location: "Farg'ona", address: "Mustaqillik ko'chasi, 25-uy, 8-xonadon", product: "Xonatlas Nimcha", lineItems: [line("p-004", "S", "Binafsha")], items: 1, amountUZS: 940_000, method: "Payme", status: "To'langan", date: "13 Okt, 19:42" },
+  { id: "#ZM-10476", customer: "Sardor Aliyev", email: "sardor.a@gmail.com", phone: "+998 99 777 88 99", location: "Toshkent", address: "Chilonzor tumani, 9-mavze, 3-uy", product: "Zardo'zi Belbog'", lineItems: [line("p-007", "M", "Oltin-qora")], items: 1, amountUZS: 575_000, method: "Click", status: "Bekor qilingan", date: "13 Okt, 16:20" },
+  { id: "#ZM-10475", customer: "Kim Soo-ah", email: "sooah.kim@naver.com", phone: "+82 10 1234 5678", location: "Seul, Koreya", address: "Gangnam-gu, Teheran-ro 152", product: "Atlas Ro'mol", lineItems: [line("p-008", "S", "Sut rang", 3), line("p-008", "S", "Qirmizi")], items: 4, amountUZS: 1_882_750, method: "Visa", status: "To'langan", date: "13 Okt, 09:58" },
 ];
 
 export const recentCustomers = [

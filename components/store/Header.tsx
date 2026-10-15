@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { Heart, Instagram, Menu, Phone, Search, ShoppingBag, User, X } from "lucide-react";
 import { useStore } from "./StoreProvider";
+import { Logo } from "./Logo";
+import { ProfileModal } from "./ProfileModal";
 import { cn } from "@/lib/format";
+import { BRAND } from "@/lib/brand";
 import type { Currency } from "@/lib/mockData";
 
 const nav = [
@@ -23,7 +26,7 @@ const announcements = [
 ];
 
 export function Header() {
-  const { currency, setCurrency, cartCount, setCartOpen } = useStore();
+  const { currency, setCurrency, cartCount, setCartOpen, profile, setProfileOpen } = useStore();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -36,14 +39,30 @@ export function Header() {
 
   return (
     <>
-      <div className="overflow-hidden bg-ink py-2 text-[10px] uppercase tracking-[0.25em] text-ivory/80">
-        <div className="flex w-max animate-marquee gap-16 whitespace-nowrap">
-          {[...announcements, ...announcements].map((a, i) => (
-            <span key={i} className="flex items-center gap-16">
-              {a} <span className="text-gold-light">✦</span>
-            </span>
-          ))}
+      <div className="flex items-center gap-4 bg-ink px-4 py-2 text-[10px] uppercase tracking-[0.25em] text-ivory/80 md:px-10">
+        <a href={BRAND.phoneHref} className="flex shrink-0 items-center gap-2 normal-case tracking-[0.12em] transition hover:text-gold-light" aria-label={`Qo'ng'iroq: ${BRAND.phone}`}>
+          <Phone size={12} strokeWidth={1.5} />
+          <span className="hidden sm:inline">{BRAND.phone}</span>
+        </a>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex w-max animate-marquee gap-16 whitespace-nowrap">
+            {[...announcements, ...announcements].map((a, i) => (
+              <span key={i} className="flex items-center gap-16">
+                {a} <span className="text-gold-light">✦</span>
+              </span>
+            ))}
+          </div>
         </div>
+        <a
+          href={BRAND.instagram}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center gap-2 normal-case tracking-[0.12em] transition hover:text-gold-light"
+          aria-label="Instagram sahifamiz"
+        >
+          <Instagram size={12} strokeWidth={1.5} />
+          <span className="hidden sm:inline">{BRAND.instagramHandle}</span>
+        </a>
       </div>
 
       <header
@@ -66,9 +85,9 @@ export function Header() {
             </nav>
           </div>
 
-          <Link href="/" className="text-center leading-none">
-            <span className="block font-serif text-2xl font-medium tracking-[0.3em] md:text-[28px]">ZARBOFT</span>
-            <span className="mt-1 block text-[9px] tracking-[0.6em] text-gold-dark">• MILLIY •</span>
+          <Link href="/" aria-label={`${BRAND.name} — bosh sahifa`}>
+            <Logo width={68} tone="onLight" priority className="md:hidden" />
+            <Logo width={88} tone="onLight" priority className="hidden md:block" />
           </Link>
 
           <div className="flex items-center justify-end gap-3 md:gap-5">
@@ -79,9 +98,16 @@ export function Header() {
             <button className="hidden md:block" aria-label="Sevimlilar">
               <Heart size={18} strokeWidth={1.5} />
             </button>
-            <Link href="/admin" className="hidden md:block" aria-label="Admin panel" title="Admin panel">
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="relative flex items-center gap-2"
+              aria-label="Mening profilim"
+              title={profile ? "Saqlangan profil" : "Mening profilim"}
+            >
               <User size={18} strokeWidth={1.5} />
-            </Link>
+              <span className="hidden text-[11px] uppercase tracking-[0.2em] xl:inline">{profile ? profile.firstName : "Profil"}</span>
+              {profile && <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-gold xl:hidden" />}
+            </button>
             <button onClick={() => setCartOpen(true)} className="relative" aria-label="Savatcha">
               <ShoppingBag size={19} strokeWidth={1.5} />
               {cartCount > 0 && (
@@ -99,7 +125,7 @@ export function Header() {
           <div className="absolute inset-0 bg-ink/40 animate-fadeIn" onClick={() => setMobileOpen(false)} />
           <div className="absolute inset-y-0 left-0 w-[82%] max-w-sm bg-ivory p-6 animate-fadeIn">
             <div className="mb-10 flex items-center justify-between">
-              <span className="font-serif text-xl tracking-[0.3em]">ZARBOFT</span>
+              <Logo width={64} tone="onLight" />
               <button onClick={() => setMobileOpen(false)} aria-label="Yopish">
                 <X size={20} strokeWidth={1.5} />
               </button>
@@ -110,13 +136,32 @@ export function Header() {
                   {n.label}
                 </Link>
               ))}
-              <Link href="/admin" className="mt-6 text-xs uppercase tracking-[0.2em] text-stone-450">
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  setProfileOpen(true);
+                }}
+                className="flex items-center gap-2 text-left font-serif text-2xl"
+              >
+                Mening profilim
+              </button>
+            </nav>
+            <div className="mt-10 space-y-3 border-t border-ink/10 pt-6 text-sm">
+              <a href={BRAND.phoneHref} className="flex items-center gap-3">
+                <Phone size={15} strokeWidth={1.5} /> {BRAND.phone}
+              </a>
+              <a href={BRAND.instagram} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
+                <Instagram size={15} strokeWidth={1.5} /> {BRAND.instagramHandle}
+              </a>
+              <Link href="/admin" className="block pt-4 text-xs uppercase tracking-[0.2em] text-stone-450">
                 Admin panel →
               </Link>
-            </nav>
+            </div>
           </div>
         </div>
       )}
+
+      <ProfileModal />
     </>
   );
 }

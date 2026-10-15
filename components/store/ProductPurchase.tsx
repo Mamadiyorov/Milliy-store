@@ -7,16 +7,23 @@ import { cn, formatPrice } from "@/lib/format";
 import { useStore } from "./StoreProvider";
 
 /** Rang, o'lcham, miqdor tanlash va savatchaga qo'shish — Quick View va detal sahifasi uchun umumiy blok. */
-export function ProductPurchase({ product, onAdded, compact = false }: { product: Product; onAdded?: () => void; compact?: boolean }) {
+export function ProductPurchase({
+  product, onAdded, compact = false, needsSelection = false,
+}: { product: Product; onAdded?: () => void; compact?: boolean; needsSelection?: boolean }) {
   const { currency, addToCart, setCartOpen, setCheckoutOpen } = useStore();
+  // Rang ham, o'lcham ham mijoz tomonidan aniq tanlanishi SHART — oldindan tanlab qo'yilmaydi
   const [size, setSize] = useState<Size | null>(null);
-  const [color, setColor] = useState(product.colors[0].name);
+  const [color, setColor] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
   const [sizeError, setSizeError] = useState(false);
+  const [colorError, setColorError] = useState(false);
+
+  const missing = [!color && "rang", !size && "o'lcham"].filter(Boolean).join(" va ");
 
   const add = (buyNow = false) => {
-    if (!size) {
-      setSizeError(true);
+    if (!size || !color) {
+      setSizeError(!size);
+      setColorError(!color);
       return;
     }
     addToCart(product, size, color, qty);
@@ -51,24 +58,37 @@ export function ProductPurchase({ product, onAdded, compact = false }: { product
         )}
       </div>
 
+      {needsSelection && missing && (
+        <div className="mt-6 border border-gold/40 bg-gold/10 px-4 py-3 text-xs leading-relaxed text-gold-dark">
+          Savatchaga qo'shishdan oldin, iltimos, <b>{missing}</b>ni tanlang.
+        </div>
+      )}
+
       <div className="mt-8">
         <p className="text-[11px] uppercase tracking-[0.2em]">
-          Rang: <span className="text-stone-450 normal-case tracking-normal">{color}</span>
+          Rang: <span className="text-stone-450 normal-case tracking-normal">{color ?? "tanlanmagan"}</span>
         </p>
         <div className="mt-3 flex gap-3">
           {product.colors.map((c) => (
             <button
               key={c.name}
-              onClick={() => setColor(c.name)}
+              onClick={() => {
+                setColor(c.name);
+                setColorError(false);
+              }}
               title={c.name}
+              aria-label={c.name}
+              aria-pressed={color === c.name}
               className={cn(
                 "h-8 w-8 rounded-full border-2 ring-offset-2 ring-offset-ivory transition",
                 color === c.name ? "border-ivory ring-1 ring-ink" : "border-ivory hover:ring-1 hover:ring-ink/30",
+                colorError && "ring-1 ring-[#8E2A2A]/60",
               )}
               style={{ background: c.hex }}
             />
           ))}
         </div>
+        {colorError && <p className="mt-2 text-xs text-[#8E2A2A]">Iltimos, rangni tanlang</p>}
       </div>
 
       <div className="mt-7">
@@ -91,7 +111,7 @@ export function ProductPurchase({ product, onAdded, compact = false }: { product
                   "border py-3 text-xs transition",
                   !available && "cursor-not-allowed border-ink/10 text-ink/25 line-through",
                   available && size === s && "border-ink bg-ink text-ivory",
-                  available && size !== s && "border-ink/20 hover:border-ink",
+                  available && size !== s && (sizeError ? "border-[#8E2A2A]/50 hover:border-ink" : "border-ink/20 hover:border-ink"),
                 )}
               >
                 {s}
@@ -101,6 +121,12 @@ export function ProductPurchase({ product, onAdded, compact = false }: { product
         </div>
         {sizeError && <p className="mt-2 text-xs text-[#8E2A2A]">Iltimos, o'lchamni tanlang</p>}
       </div>
+
+      {(sizeError || colorError) && missing && (
+        <p role="alert" className="mt-6 bg-[#8E2A2A]/5 px-4 py-3 text-xs text-[#8E2A2A]">
+          Savatchaga qo'shish uchun {missing}ni tanlashingiz shart.
+        </p>
+      )}
 
       <div className="mt-7 flex gap-3">
         <div className="flex items-center border border-ink/20">
