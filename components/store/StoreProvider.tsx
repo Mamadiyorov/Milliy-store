@@ -5,6 +5,10 @@ import {
   products as seedProducts, recentOrders as seedOrders,
   type Currency, type Order, type OrderStatus, type Product, type Size,
 } from "@/lib/mockData";
+import {
+  fallbackRate, fetchUsdRate, formatUSD, formatUZS, isFresh, readCachedRate, uzsToUSD, type UsdRate,
+} from "@/lib/currency";
+import { LANGUAGE_KEY, isLanguage, languageMeta, translate, type Language, type TranslationKey } from "@/lib/i18n";
 
 export interface CartItem {
   key: string;
@@ -29,6 +33,15 @@ export interface CustomerProfile {
 interface StoreState {
   currency: Currency;
   setCurrency: (c: Currency) => void;
+  /** 1 USD = usdRate.rate UZS (API'dan, keshdan yoki zaxira 12 800) */
+  usdRate: UsdRate;
+  /** Narxni tanlangan valyutada formatlaydi. USD — har bir dona narxi yaxlitlanib, keyin qty ga ko'paytiriladi. */
+  money: (unitUZS: number, qty?: number) => string;
+  /** Yaxlitlangan USD qiymat (savatcha/checkout jamlari uchun) */
+  toUSD: (unitUZS: number) => number;
+  language: Language;
+  setLanguage: (l: Language) => void;
+  t: (key: TranslationKey) => string;
   cart: CartItem[];
   cartCount: number;
   subtotalUZS: number;
@@ -94,6 +107,8 @@ function readData(): { orders?: Order[]; products?: Product[] } {
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrency] = useState<Currency>("UZS");
+  const [usdRate, setUsdRate] = useState<UsdRate>(fallbackRate);
+  const [language, setLanguageState] = useState<Language>("uz");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [products, setProducts] = useState<Product[]>(seedProducts);
   const [orders, setOrders] = useState<Order[]>(seedOrders);
@@ -116,6 +131,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
     try {
+      const savedLang = localStorage.getItem(LANGUAGE_KEY);
+      if (isLanguage(savedLang)) setLanguageState(savedLang);
+    } catch {}
+    try {
       const rawProfile = localStorage.getItem(PROFILE_KEY);
       if (rawProfile) setProfile(JSON.parse(rawProfile));
     } catch {}
@@ -132,7 +151,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (next.products) setProducts(next.products);
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+
+    // Valyuta kursi: avval kesh (6 soat), eskirgan bo'lsa API; API ishlamasa — kesh yoki 12 800 zaxira kurs
+    let cancelled = false;
+    const cached = readCachedRate();
+    if (cached) setUsdRate(cached);
+    if (!cached || !isFresh(cached)) {
+      fetchUsdRate().then((live) => {
+        if (!cancelled && live) setUsdRate(live);
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -216,6 +249,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
   }, []);
 
+  // Til: LocalStorage'ga saqlash va <html lang/dir> ni yangilash (AR → RTL)
+  const setLanguage = useCallback((l: Language) => {
+    setLanguageState(l);
+    try {
+      localStorage.setItem(LANGUAGE_KEY, l);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const meta = languageMeta(language);
+    document.documentElement.lang = meta.htmlLang;
+    document.documentElement.dir = meta.dir;
+  }, [language]);
+
+  const t = useCallback((key: TranslationKey) => translate(language, key), [language]);
+
+  const toUSD = useCallback((unitUZS: number) => uzsToUSD(unitUZS, usdRate.rate), [usdRate.rate]);
+
+  const money = useCallback(
+    (unitUZS: number, qty = 1) =>
+      currency === "UZS" ? formatUZS(unitUZS * qty, translate(language, "currency.uzsSuffix")) : formatUSD(toUSD(unitUZS) * qty),
+    [currency, language, toUSD],
+  );
+
   const value = useMemo<StoreState>(() => {
     let subtotalUZS = 0;
     let subtotalUSD = 0;
@@ -224,18 +281,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const p = getProduct(item.productId);
       if (!p) continue;
       subtotalUZS += p.priceUZS * item.qty;
-      subtotalUSD += p.priceUSD * item.qty;
+      subtotalUSD += toUSD(p.priceUZS) * item.qty; // har bir dona yaxlitlangan narxi — savatcha qatorlari bilan mos keladi
       cartCount += item.qty;
     }
     return {
-      currency, setCurrency, cart, cartCount, subtotalUZS, subtotalUSD,
+      currency, setCurrency, usdRate, money, toUSD, language, setLanguage, t,
+      cart, cartCount, subtotalUZS, subtotalUSD,
       addToCart, updateQty, removeItem, clearCart,
       cartOpen, setCartOpen, checkoutOpen, setCheckoutOpen, quickView, setQuickView, requestSelection, quickViewNeedsSelection, toast,
       profile, saveProfile, clearProfile, profileOpen, setProfileOpen,
       products, addProduct, orders, addOrder, setOrderStatus,
     };
   }, [
-    currency, cart, addToCart, updateQty, removeItem, clearCart, cartOpen, checkoutOpen, quickView, setQuickView, requestSelection,
+    currency, usdRate, money, toUSD, language, setLanguage, t, cart, addToCart, updateQty, removeItem, clearCart, cartOpen, checkoutOpen, quickView, setQuickView, requestSelection,
     quickViewNeedsSelection, toast, profile, saveProfile, clearProfile, profileOpen, products, addProduct, orders, addOrder, setOrderStatus,
   ]);
 

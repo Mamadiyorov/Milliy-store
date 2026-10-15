@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, CreditCard, Globe, Loader2, Lock, MapPin, Truck, X } from "lucide-react";
 import { countries, paymentMethods, shippingOptions, type OrderLine, type PaymentMethod, type ShippingOption } from "@/lib/mockData";
-import { cn, formatPrice, formatUZS } from "@/lib/format";
+import { cn, formatUSD, formatUZS } from "@/lib/format";
 import { getProduct, useStore, type CustomerProfile, type NewOrder } from "./StoreProvider";
 import { SmartImage } from "./SmartImage";
 
@@ -24,7 +24,9 @@ interface FormState {
 const initialForm: FormState = { firstName: "", lastName: "", phone: "+998 ", email: "", country: "UZ", city: "", address: "" };
 
 export function CheckoutModal() {
-  const { checkoutOpen, setCheckoutOpen, cart, currency, subtotalUZS, subtotalUSD, clearCart, addOrder, profile, saveProfile } = useStore();
+  const {
+    checkoutOpen, setCheckoutOpen, cart, currency, money, toUSD, usdRate, subtotalUZS, subtotalUSD, clearCart, addOrder, profile, saveProfile,
+  } = useStore();
   const [form, setForm] = useState<FormState>(initialForm);
   const [shipping, setShipping] = useState<ShippingOption["id"]>("tashkent");
   const [payment, setPayment] = useState<PaymentMethod>("payme");
@@ -62,9 +64,10 @@ export function CheckoutModal() {
   const selectedShipping = shippingOptions.find((s) => s.id === shipping)!;
   const freeShipping = shipping === "tashkent" && subtotalUZS >= FREE_SHIPPING_UZS;
   const shipUZS = freeShipping ? 0 : selectedShipping.priceUZS;
-  const shipUSD = freeShipping ? 0 : selectedShipping.priceUSD;
+  const shipUSD = toUSD(shipUZS);
   const totalUZS = subtotalUZS + shipUZS;
-  const totalUSD = subtotalUSD + shipUSD;
+  const totalUSD = subtotalUSD + shipUSD; // yaxlitlangan qatorlar yig'indisi — ekrandagi raqamlar bilan mos
+  const fmt = (uzs: number, usd: number) => (currency === "UZS" ? money(uzs) : formatUSD(usd));
 
   const payLabel = useMemo(() => {
     if (payment === "payme") return "Payme orqali to'lash";
@@ -130,7 +133,7 @@ export function CheckoutModal() {
       shipping: selectedShipping.name,
     };
 
-    setPaidTotal(formatPrice(totalUZS, totalUSD, currency));
+    setPaidTotal(fmt(totalUZS, totalUSD));
     setStage("processing");
     setTimeout(() => {
       const saved = addOrder(newOrder);
@@ -223,7 +226,7 @@ export function CheckoutModal() {
                           </p>
                         </div>
                         <span className="text-sm">
-                          {isFree ? <span className="text-gold-dark">Bepul</span> : s.international ? `$${s.priceUSD}` : formatUZS(s.priceUZS)}
+                          {isFree ? <span className="text-gold-dark">Bepul</span> : money(s.priceUZS)}
                         </span>
                       </label>
                     );
@@ -276,7 +279,7 @@ export function CheckoutModal() {
                             {item.color} · {item.size}
                           </p>
                         </div>
-                        <span className="text-sm">{formatPrice(p.priceUZS * item.qty, p.priceUSD * item.qty, currency)}</span>
+                        <span className="text-sm">{money(p.priceUZS, item.qty)}</span>
                       </li>
                     );
                   })}
@@ -284,13 +287,19 @@ export function CheckoutModal() {
               )}
 
               <dl className="mt-8 space-y-3 border-t border-ink/10 pt-6 text-sm">
-                <Row label="Oraliq summa" value={formatPrice(subtotalUZS, subtotalUSD, currency)} />
-                <Row label={`Dostavka (${selectedShipping.name})`} value={freeShipping ? "Bepul" : formatPrice(shipUZS, shipUSD, currency)} />
+                <Row label="Oraliq summa" value={fmt(subtotalUZS, subtotalUSD)} />
+                <Row label={`Dostavka (${selectedShipping.name})`} value={freeShipping ? "Bepul" : fmt(shipUZS, shipUSD)} />
                 <div className="flex justify-between border-t border-ink/10 pt-4 text-lg">
                   <dt className="font-serif text-xl">Jami</dt>
-                  <dd className="font-medium">{formatPrice(totalUZS, totalUSD, currency)}</dd>
+                  <dd className="font-medium">{fmt(totalUZS, totalUSD)}</dd>
                 </div>
               </dl>
+              {currency === "USD" && (
+                <p className="mt-3 text-[11px] leading-relaxed text-stone-450">
+                  USD narxlar 1 USD = {formatUZS(usdRate.rate)} kursi bo'yicha yaxlitlangan{!usdRate.live && " (taxminiy kurs)"}. To'lov{" "}
+                  {formatUZS(totalUZS)} miqdorida amalga oshiriladi.
+                </p>
+              )}
 
               <button
                 type="submit"

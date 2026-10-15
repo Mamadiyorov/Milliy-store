@@ -4,12 +4,12 @@ import Link from "next/link";
 import { Eye, Heart, ShoppingBag } from "lucide-react";
 import { useState } from "react";
 import type { Product } from "@/lib/mockData";
-import { cn, formatPrice } from "@/lib/format";
+import { cn } from "@/lib/format";
 import { useStore } from "./StoreProvider";
 import { SmartImage } from "./SmartImage";
 
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
-  const { currency, requestSelection, setQuickView } = useStore();
+  const { money, requestSelection, setQuickView } = useStore();
   const [liked, setLiked] = useState(false);
 
   return (
@@ -75,10 +75,10 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
         </div>
       </div>
       <div className="mt-1.5 flex items-baseline gap-2 text-sm">
-        <span>{formatPrice(product.priceUZS, product.priceUSD, currency)}</span>
-        {product.compareAtUZS && product.compareAtUSD && (
+        <span>{money(product.priceUZS)}</span>
+        {product.compareAtUZS && (
           <span className="text-xs text-stone-450 line-through">
-            {formatPrice(product.compareAtUZS, product.compareAtUSD, currency)}
+            {money(product.compareAtUZS)}
           </span>
         )}
       </div>

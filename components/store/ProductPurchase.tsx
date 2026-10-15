@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { Minus, Plus, ShieldCheck, Star, Truck } from "lucide-react";
 import type { Product, Size } from "@/lib/mockData";
-import { cn, formatPrice } from "@/lib/format";
+import { cn } from "@/lib/format";
 import { useStore } from "./StoreProvider";
 
 /** Rang, o'lcham, miqdor tanlash va savatchaga qo'shish — Quick View va detal sahifasi uchun umumiy blok. */
 export function ProductPurchase({
   product, onAdded, compact = false, needsSelection = false,
 }: { product: Product; onAdded?: () => void; compact?: boolean; needsSelection?: boolean }) {
-  const { currency, addToCart, setCartOpen, setCheckoutOpen } = useStore();
+  const { money, addToCart, setCartOpen, setCheckoutOpen } = useStore();
   // Rang ham, o'lcham ham mijoz tomonidan aniq tanlanishi SHART — oldindan tanlab qo'yilmaydi
   const [size, setSize] = useState<Size | null>(null);
   const [color, setColor] = useState<string | null>(null);
@@ -50,10 +50,10 @@ export function ProductPurchase({
       </div>
 
       <div className="mt-6 flex items-baseline gap-3">
-        <span className="text-2xl">{formatPrice(product.priceUZS, product.priceUSD, currency)}</span>
-        {product.compareAtUZS && product.compareAtUSD && (
+        <span className="text-2xl">{money(product.priceUZS)}</span>
+        {product.compareAtUZS && (
           <span className="text-sm text-stone-450 line-through">
-            {formatPrice(product.compareAtUZS, product.compareAtUSD, currency)}
+            {money(product.compareAtUZS)}
           </span>
         )}
       </div>

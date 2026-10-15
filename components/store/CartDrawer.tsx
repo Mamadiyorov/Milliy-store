@@ -4,12 +4,12 @@ import { useEffect } from "react";
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import { getProduct, useStore } from "./StoreProvider";
 import { SmartImage } from "./SmartImage";
-import { formatPrice } from "@/lib/format";
+import { formatUSD } from "@/lib/format";
 
 const FREE_SHIPPING_UZS = 3_000_000;
 
 export function CartDrawer() {
-  const { cart, cartOpen, setCartOpen, currency, subtotalUZS, subtotalUSD, updateQty, removeItem, setCheckoutOpen } = useStore();
+  const { cart, cartOpen, setCartOpen, currency, money, subtotalUZS, subtotalUSD, updateQty, removeItem, setCheckoutOpen } = useStore();
 
   useEffect(() => {
     if (!cartOpen) return;
@@ -88,7 +88,7 @@ export function CartDrawer() {
                             <Plus size={12} />
                           </button>
                         </div>
-                        <span className="text-sm">{formatPrice(p.priceUZS * item.qty, p.priceUSD * item.qty, currency)}</span>
+                        <span className="text-sm">{money(p.priceUZS, item.qty)}</span>
                       </div>
                     </div>
                   </li>
@@ -99,7 +99,7 @@ export function CartDrawer() {
             <div className="border-t border-ink/10 px-6 py-6">
               <div className="flex justify-between text-sm">
                 <span>Oraliq summa</span>
-                <span>{formatPrice(subtotalUZS, subtotalUSD, currency)}</span>
+                <span>{currency === "UZS" ? money(subtotalUZS) : formatUSD(subtotalUSD)}</span>
               </div>
               <p className="mt-1 text-xs text-stone-450">Dostavka narxi keyingi bosqichda hisoblanadi</p>
               <button

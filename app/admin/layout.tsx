@@ -5,5 +5,10 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen bg-night-900 font-sans text-zinc-200">{children}</div>;
+  // Admin panel faqat o'zbekcha — do'konda AR (RTL) tanlansa ham chapdan-o'ngga qoladi
+  return (
+    <div dir="ltr" className="min-h-screen bg-night-900 font-sans text-zinc-200">
+      {children}
+    </div>
+  );
 }

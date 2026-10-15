@@ -1,7 +1,7 @@
 // DJAFARIY — demo/portfolio uchun mock ma'lumotlar.
 // Barcha raqamlar va ismlar to'qima; real tizimga ulanganda API bilan almashtiriladi.
 
-export type Currency = "UZS" | "USD";
+export type { Currency } from "./currency";
 export type Size = "S" | "M" | "L" | "XL";
 
 export const USD_RATE = 12_650; // 1 USD = 12 650 UZS (demo kurs)
